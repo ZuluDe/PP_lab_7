@@ -60,23 +60,23 @@ int main() {
 
                 #pragma omp parallel private(i,j,k)
                 {
-                    static double localC[N][N];
-
-                    for (i = 0; i < N; i++)
-                        for (j = 0; j < N; j++)
-                            localC[i][j] = 0.0;
-
                     if (var == 0) {
                         #pragma omp for schedule(dynamic)
                         for (i = 0; i < N; i++) {
                             for (k = 0; k < N; k++) {
                                 for (j = 0; j < N; j++) {
-                                    localC[i][j] += A[i][k] * B[k][j];
+                                    C[i][j] += A[i][k] * B[k][j];
                                 }
                             }
                         }
                     }
                     else {
+                        static double localC[N][N];
+
+                        for (i = 0; i < N; i++)
+                            for (j = 0; j < N; j++)
+                                localC[i][j] = 0.0;
+
                         #pragma omp for schedule(dynamic)
                         for (k = 0; k < N; k++) {
                             for (i = 0; i < N; i++) {
@@ -85,13 +85,13 @@ int main() {
                                 }
                             }
                         }
-                    }
 
-                    #pragma omp critical
-                    {
-                        for (i = 0; i < N; i++)
-                            for (j = 0; j < N; j++)
-                                C[i][j] += localC[i][j];
+                        #pragma omp critical
+                        {
+                            for (i = 0; i < N; i++)
+                                for (j = 0; j < N; j++)
+                                    C[i][j] += localC[i][j];
+                        }
                     }
                 }
 
