@@ -4,12 +4,12 @@
 #include <omp.h>
 #include <locale.h>
 
-#define N 1024
+#define N 2048
 
 int main() {
     setlocale(LC_ALL, "Russian");
 
-    static double A[N][N], B[N][N], C[N][N];
+    static double A[N][N], B[N][N], C[N][N], Temp[N][N];
     int i, j, k, r, var, t;
     int nt;
     double start, end, min_time;
@@ -27,9 +27,11 @@ int main() {
     printf("Умножение матриц %dx%d\n", N, N);
     printf("Порядок   | Потоков |   Время (с)   | Ускорение | Эффективность\n\n");
 
-    int threads[] = { 1, 2, 4, 8, 12, 16, 20, 24, 28, 32, 34 };
+    int threads[] = { 1, 2, 4, 8, 12, 14, 16, 20, 24, 28, 32, 34, 64 };
+    int num_tests = sizeof(threads) / sizeof(threads[0]);
 
-    for (t = 0; t < 11; t++)
+
+    for (t = 0; t < num_tests; t++)
     {
         nt = threads[t];
         omp_set_num_threads(nt);
@@ -47,22 +49,29 @@ int main() {
             min_time = 1e9;
 
             for (r = 0; r < 3; r++){
-                for (i = 0; i < N; i++) {
-                    for (j = 0; j < N; j++) {
+
+                for (i = 0; i < N; i++)
+                    for (j = 0; j < N; j++)
+                    {
                         C[i][j] = 0.0;
                     }
-                }
 
                 start = omp_get_wtime();
 
-                #pragma omp parallel
+                #pragma omp parallel private(i,j,k)
                 {
+                    static double localC[N][N];
+
+                    for (i = 0; i < N; i++)
+                        for (j = 0; j < N; j++)
+                            localC[i][j] = 0.0;
+
                     if (var == 0) {
                         #pragma omp for schedule(dynamic)
                         for (i = 0; i < N; i++) {
                             for (k = 0; k < N; k++) {
                                 for (j = 0; j < N; j++) {
-                                    C[i][j] += A[i][k] * B[k][j];
+                                    localC[i][j] += A[i][k] * B[k][j];
                                 }
                             }
                         }
@@ -72,10 +81,17 @@ int main() {
                         for (k = 0; k < N; k++) {
                             for (i = 0; i < N; i++) {
                                 for (j = 0; j < N; j++) {
-                                    C[i][j] += A[i][k] * B[k][j];
+                                    localC[i][j] += A[i][k] * B[k][j];
                                 }
                             }
                         }
+                    }
+
+                    #pragma omp critical
+                    {
+                        for (i = 0; i < N; i++)
+                            for (j = 0; j < N; j++)
+                                C[i][j] += localC[i][j];
                     }
                 }
 
